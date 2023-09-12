@@ -1,0 +1,74 @@
+make: Entering directory '/home/ubuntu/voltageos/kernel/xiaomi/sm8250'
+make[1]: Entering directory '/home/ubuntu/voltageos/out/target/product/munch/obj/KERNEL_OBJ'
+/home/ubuntu/voltageos/prebuilts/clang/host/linux-x86/clang/bin/clang: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.36' not found (required by /home/ubuntu/voltageos/prebuilts/clang/host/linux-x86/clang/bin/clang)
+/home/ubuntu/voltageos/prebuilts/clang/host/linux-x86/clang/bin/clang: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.36' not found (required by /home/ubuntu/voltageos/prebuilts/clang/host/linux-x86/clang/bin/clang)
+  HOSTCC  scripts/basic/fixdep
+/home/ubuntu/voltageos/prebuilts/clang/host/linux-x86/clang/bin/clang: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.36' not found (required by /home/ubuntu/voltageos/prebuilts/clang/host/linux-x86/clang/bin/clang)
+make[2]: *** [scripts/Makefile.host:90: scripts/basic/fixdep] Error 1
+make[1]: *** [/home/ubuntu/voltageos/kernel/xiaomi/sm8250/Makefile:492: scripts_basic] Error 2
+make[1]: Leaving directory '/home/ubuntu/voltageos/out/target/product/munch/obj/KERNEL_OBJ'
+make: *** [Makefile:153: sub-make] Error 2
+make: Leaving directory '/home/ubuntu/voltageos/kernel/xiaomi/sm8250'
+17:56:01 ninja failed with: exit status 1
+
+## fix
+# glibc
+#!/bin/bash
+#wget -4c https://ftp.gnu.org/gnu/glibc/glibc-2.38.tar.xz #latest
+wget -4c https://ftp.gnu.org/gnu/glibc/glibc-2.36.tar.xz
+tar -xvf glibc-2.36.tar.xz && cd glibc-2.36
+mkdir build
+cd build
+../configure --prefix=/home/ubuntu/voltageos/prebuilts/clang/host/linux-x86/clang/
+make -j$(nproc --all)
+make install
+export PATH=/home/ubuntu/voltageos/prebuilts/clang/host/linux-x86/clang/glibc/bin:$PATH
+export LD_LIBRARY_PATH=/home/ubuntu/voltageos/prebuilts/clang/host/linux-x86/clang/glibc/lib
+export LIBRARY_PATH=/home/ubuntu/voltageos/prebuilts/clang/host/linux-x86/clang/glibc/lib
+  
+  else
+
+#change to proton clang 
+# Proton Clang
+git clone --depth=1  https://github.com/kdrag0n/proton-clang.git prebuilts/clang/host/linux-x86/clang 
+
+FAILED: /home/ubuntu/voltageos/out/soong/.intermediates/system/sepolicy/recovery_sepolicy.cil/android_common/recovery_sepolicy.cil
+/home/ubuntu/voltageos/out/host/linux-x86/bin/checkpolicy -C -M -c 30 -o /home/ubuntu/voltageos/out/soong/.intermediates/system/sepolicy/recovery_sepolicy.cil/android_common/recovery_sepolicy.cil /home/ubuntu/voltageos/out/soong/.intermediates/system/sepolicy/recovery_sepolicy.conf/android_common/recovery_sepolicy.conf # hash of input list: 9c4b11ef9b7bb23ad8114ac53fa6c563e8e213c66a84809cba76d038e0c5ff95
+device/xiaomi/sm8250-common/sepolicy/vendor/hal_camera_default.te:18:ERROR 'unknown type hal_xiaomi_camera_hwservice' at token ';' on line 138425:
+  allow hal_camera_default hal_xiaomi_camera_hwservice:hwservice_manager { add find };
+#line 18
+checkpolicy:  error(s) encountered while parsing configuration
+18:46:49 ninja failed with: exit status 1
+##fix not found remove micam(tmp fix)
+
+[  5% 4154/70179] //system/sepolicy:sepolicy.recovery Compiling cil files for sepolicy.recovery [common]
+FAILED: /home/ubuntu/voltageos/out/soong/.intermediates/system/sepolicy/sepolicy.recovery/android_common/sepolicy
+/home/ubuntu/voltageos/out/host/linux-x86/bin/secilc -m -M true -G -c 30 /home/ubuntu/voltageos/out/soong/.intermediates/system/sepolicy/recovery_sepolicy.cil/android_common/recovery_sepolicy.cil -o /home/ubuntu/voltageos/out/soong/.intermediates/system/sepolicy/sepolicy.recovery/android_common/sepolicy_policy -f /dev/null && cp -f /home/ubuntu/voltageos/out/soong/.intermediates/system/sepolicy/sepolicy.recovery/android_common/sepolicy_policy /home/ubuntu/voltageos/out/soong/.intermediates/system/sepolicy/sepolicy.recovery/android_common/sepolicy && rm -f /home/ubuntu/voltageos/out/soong/.intermediates/system/sepolicy/sepolicy.recovery/android_common/sepolicy_policy # hash of input list: 34998483ce8365484450225691ba1606e26bcc82483aec0d0a77a15e8c5eeabe
+neverallow check failed at /home/ubuntu/voltageos/out/soong/.intermediates/system/sepolicy/recovery_sepolicy.cil/android_common/recovery_sepolicy.cil:11270 from system/sepolicy/public/domain.te:473
+  (neverallow domain device (chr_file (read write open)))
+    <root>
+    allow at /home/ubuntu/voltageos/out/soong/.intermediates/system/sepolicy/recovery_sepolicy.cil/android_common/recovery_sepolicy.cil:42955
+      (allow hal_audio_default device (chr_file (ioctl read write getattr lock append map open watch watch_reads)))
+
+##fix comment out neverallow domain device (chr_file (read write open) in system/sepolicy/public/domain.te:473
+
+Failed to generate binary
+Failed to build policydb
+09:12:27 ninja failed with: exit status 1
+
+ld.lld: error: -mllvm: ld.lld: Unknown command line argument '-polly-loopfusion-greedy=1'.  Try: '/home/ubuntu/voltageos/prebuilts/clang/host/linux-x86/clang/bin/ld.lld --help'
+ld.lld: Did you mean '--polly-opt-fusion=1'?
+
+ld.lld: error: -mllvm: ld.lld: Unknown command line argument '-polly-postopts=1'.  Try: '/home/ubuntu/voltageos/prebuilts/clang/host/linux-x86/clang/bin/ld.lld --help'
+ld.lld: Did you mean '--polly-position=1'?
+
+ld.lld: error: -mllvm: ld.lld: Unknown command line argument '-polly-reschedule=1'.  Try: '/home/ubuntu/voltageos/prebuilts/clang/host/linux-x86/clang/bin/ld.lld --help'
+ld.lld: Did you mean '--polly-scheduling=1'?
+make[2]: *** [/home/ubuntu/voltageos/kernel/xiaomi/sm8250/arch/arm64/kernel/vdso/Makefile:65: arch/arm64/kernel/vdso/vdso.so.dbg] Error 1
+make[1]: *** [arch/arm64/Makefile:216: vdso_prepare] Error 2
+make[1]: Leaving directory '/home/ubuntu/voltageos/out/target/product/munch/obj/KERNEL_OBJ'
+make: *** [Makefile:153: sub-make] Error 2
+make: Leaving directory '/home/ubuntu/voltageos/kernel/xiaomi/sm8250'
+09:56:09 ninja failed with: exit status 1
+
+##fix remove polly optmization in nexus kernel config 
