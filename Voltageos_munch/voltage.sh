@@ -1,13 +1,13 @@
 #!/bin/bash
 
-set -e 
+set -e
 
 GITPASS=""
 
 # Update & Install Req
 sudo apt-get update
-echo -ne '\n' | sudo apt-get upgrade -y
-echo -ne '\n' | sudo apt-get install git-core git-lfs gnupg ccache flex bison build-essential zip curl zlib1g-dev libssl-dev libc6-dev-i386 libncurses5 x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig -y
+sudo apt-get upgrade -y
+sudo apt-get install git-core git-lfs gnupg ccache flex bison build-essential zip curl zlib1g-dev libssl-dev libc6-dev-i386 libncurses5 x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig -y
 sudo ln -s /usr/bin/python3 /usr/bin/python
 
 # create swap
@@ -45,6 +45,10 @@ repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
 git clone https://$GITPASS@github.com/Tokito-Kun/Private_keys.git keys
 
 # Latest chromium-webview
+rm -r external/chromium-webview/prebuilt/arm
+rm -r external/chromium-webview/prebuilt/arm64
+rm -r external/chromium-webview/prebuilt/x86
+rm -r external/chromium-webview/prebuilt/x86_64
 git clone https://github.com/LineageOS/android_external_chromium-webview_prebuilt_arm -b main external/chromium-webview/prebuilt/arm
 git clone https://github.com/LineageOS/android_external_chromium-webview_prebuilt_arm64 -b main external/chromium-webview/prebuilt/arm64
 git clone https://github.com/LineageOS/android_external_chromium-webview_prebuilt_x86 -b main external/chromium-webview/prebuilt/x86
@@ -55,8 +59,18 @@ cd ~/voltageos/external/chromium-webview/prebuilt/x86  && git lfs pull
 cd ~/voltageos/external/chromium-webview/prebuilt/x86_64  && git lfs pull
 cd ~/voltageos
 
-# KProfiles 
+# Smart 5G patch
+rm -r frameworks/base
+git clone --single-branch https://github.com/Tokito-Kun/voltage_frameworks_base.git -b 13 frameworks/base
+
+rm -r packages/apps/Settings
+git clone --single-branch https://github.com/Tokito-Kun/voltage_packages_apps_Settings.git -b 13 packages/apps/Settings
+
+# KProfiles
 git clone https://github.com/CannedShroud/android_packages_apps_KProfiles packages/apps/KProfiles
+
+# Graphene Camera
+git clone https://github.com/GrapheneOS/Camera.git packages/apps/Camera
 
 # Proton Clang
 git clone --depth=1  https://github.com/kdrag0n/proton-clang.git prebuilts/clang/host/linux-x86/clang
@@ -72,9 +86,8 @@ git clone --depth=1 https://gitlab.com/pranavtalmale/android_vendor_xiaomi_munch
 git clone --depth=1 https://gitlab.com/pranavtalmale/android_vendor_xiaomi_sm8250-common.git -b meme-14 vendor/xiaomi/sm8250-common
 
 # Nexus Kernel
-git clone --depth=1 --single-branch https://github.com/Tokito-Kun/nexus_kernel_xiaomi_sm8250 -b voltage-13 kernel/xiaomi/sm8250
+git clone --depth=1 --single-branch https://github.com/Tokito-Kun/nexus_kernel_xiaomi_sm8250 -b staging-lineage kernel/xiaomi/sm8250
 
-. build/envsetup.sh && lunch voltage_munch-eng  && make -j$(nproc --all) target-files-package & make -j$(nproc --all) otatools
-#romname=$(cat out/target/product/munch/system/build.prop | grep ro.voltage.version | cut -d "=" -f 2)-$(date -u +%Y%m%d-%H%M)
+. build/envsetup.sh && lunch voltage_munch-eng  && make -j$(nproc --all) target-files-package otatools
 sign_target_files_apks -o -d keys out/target/product/munch/obj/PACKAGING/target_files_intermediates/*-target_files-*.zip out/target/product/munch/signed-target-files.zip
-ota_from_target_files -k keys/releasekey out/target/product/munch/signed-target-files.zip "out/target/product/munch/voltage-2.8-EOL-munch-${date -u +%Y%m%d-%H%M}-UNOFFICIAL.zip"
+ota_from_target_files -k keys/releasekey out/target/product/munch/signed-target-files.zip "out/target/product/munch/voltage-2.8-EOL-munch-$(date -u +%Y%m%d-%H%M)-UNOFFICIAL.zip"
