@@ -2,88 +2,72 @@
 
 set -e
 
-GITPASS=""
+GITPASS="" # Git Token
+CC_DIR="$(pwd -P)/../.ccache" # CCache Path
 
-# Update & Install Req
-sudo apt-get update
-sudo apt-get upgrade -y
-sudo apt-get install git-core git-lfs jq gnupg ccache flex bison build-essential zip curl zlib1g-dev libssl-dev libc6-dev-i386 libncurses5 x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig -y
-sudo ln -s /usr/bin/python3 /usr/bin/python
+if [ $(command -v apt) ]; then
+    sudo apt-get update && sudo apt-get upgrade -y
+    sudo apt-get install git-core git-lfs jq rsync python3 gnupg ccache flex bison build-essential zip curl zlib1g-dev libssl-dev libc6-dev-i386 libncurses5 x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig -y
+    sudo ln -s /usr/bin/python3 /usr/bin/python
+elif [ $(command -v pacman) ]; then
+    sudo pacman -Sy --needed --noconfirm -< arch-pkg
+fi
 
-# create swap
-sudo swapon --show
-sudo fallocate -l 20G /swapfile
-ls -lh /swapfile
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile
-sudo swapon --show
-sudo cp /etc/fstab /etc/fstab.bak
-echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+if [ ! $(command -v repo) ]; then
+    if [ $(command -v pacman) ]; then
+        sudo pacman -S repo
+    fi
+elif [ -f ~/.bin/repo ]; then
+    export PATH="${HOME}/.bin:${PATH}"
+else
+    mkdir -p ~/.bin
+    curl https://storage.googleapis.com/git-repo-downloads/repo > ~/.bin/repo
+    chmod a+rx ~/.bin/repo
+    export PATH="${HOME}/.bin:${PATH}"
+fi
 
-# ccache
-export USE_CCACHE=1
-export CCACHE_EXEC=/usr/bin/ccache
-ccache -M 50G
+# Git Config
+if [ ! -f "$(realpath ~/.gitconfig)" ]; then
+    git config --global user.email "93600306+Ivy-Tokito@users.noreply.github.com"
+    git config --global user.name "Ivy-Tokito"
+fi
 
-# git config
-git config --global user.email "93600306+Tokito-Kun@users.noreply.github.com"
-git config --global user.name "Tokito-Kun"
-
-# repo
-cd ~/
-mkdir -p ~/.bin
-curl https://storage.googleapis.com/git-repo-downloads/repo > ~/.bin/repo
-chmod a+rx ~/.bin/repo
-export PATH="${HOME}/.bin:${PATH}"
-
-# Fetch Source
-mkdir voltageos
-cd voltageos
-repo init -u https://github.com/VoltageOS/manifest.git -b 14 --git-lfs
+# Repo Clone
+mkdir voltageos && cd voltageos
+yes | repo init -u https://github.com/VoltageOS/manifest.git -b 14 --git-lfs
+git clone https://github.com/Ivy-Tokito/munch_manifest -b voltage-14 .repo/local_manifests
+git clone https://$GITPASS@github.com/Ivy-Tokito/Private_keys.git keys
 repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
-git clone https://$GITPASS@github.com/Tokito-Kun/Private_keys.git keys
 
-# Smart 5G patch
-rm -r frameworks/base
-git clone --depth=1 https://github.com/Yukimitsu-Tokito/voltage_frameworks_base.git -b 14-patch frameworks/base
+# Build
+export BUILD_USERNAME=Tokito
+export USE_CCACHE=1 CCACHE_EXEC=$(which ccache)
+[[ ! -z "$CC_DIR" ]] && export CCACHE_DIR="$CC_DIR"
+ccache -M 20G
 
-rm -r packages/apps/Settings
-git clone --depth=1 https://github.com/Yukimitsu-Tokito/voltage_packages_apps_Settings.git -b 14-patch packages/apps/Settings
+sudo mount -o remount,size=32G /tmp #increase /tmp space to 32G #to avoid no space in /tmp error
 
-# NTFS-3G
-git clone https://github.com/LineageOS/android_external_ntfs-3g.git external/ntfs-3g
+. build/envsetup.sh && lunch voltage_munch-ap1a-user && make -j$(nproc --all) target-files-package otatools
 
-# KProfiles
-git clone https://github.com/KProfiles/android_packages_apps_Kprofiles packages/apps/KProfiles
+local BUILD_PROP="$ANDROID_BUILD_TOP/out/target/product/munch/obj/PACKAGING/target_files_intermediates/voltage_munch-target_files/SYSTEM/build.prop"
+local BUILD_VERSION=$(grep org.voltage.version $BUILD_PROP | cut -d "=" -f 2)
+local DEVICE=$(grep ro.voltage.device $BUILD_PROP | cut -d "=" -f 2 | head -n 1)
+local BUILD_DATE=$(grep ro.build.date.utc $BUILD_PROP | cut -d "=" -f 2 | xargs -I {} date -d @{} -u +"%Y%m%d-%H%M")
+local BUILD_STATUS=$(grep ro.voltage.build.status $BUILD_PROP | cut -d "=" -f 2)
+local BUILD_TYPE=$(grep ro.build.type $BUILD_PROP | cut -d "=" -f 2)
+ZIPNAME="voltage-$BUILD_VERSION-$DEVICE-$BUILD_DATE-$BUILD_STATUS"
 
-# Prebuilt apps
-git clone --depth=1 https://github.com/Tokito-Kun/android_packages_apps_Prebuilts.git -b 13 packages/apps/Prebuilts
+sign_target_files_apks -o -d keys --extra_apks PifPrebuilt.apk=keys/platform \
+out/target/product/munch/obj/PACKAGING/target_files_intermediates/*-target_files.zip out/target/product/munch/$BUILD_DATE-signed-target-files.zip
+check_target_files_vintf -v out/target/product/munch/$BUILD_DATE-signed-target-files.zip 2>&1 | tee out/target/product/munch/vintf.log
+ota_from_target_files -k keys/releasekey out/target/product/munch/signed-target-files.zip "out/target/product/munch/$ZIPNAME.zip"
 
-# GrapheneOS Apps
-git clone --depth=1 https://github.com/GrapheneOS/platform_external_Apps.git -b 14 external/Apps
+# Delta
+#[[ -z "$OLD_BUILD_DATE" ]] && err "Old Build Date Not Found For Delta Build"
+#[[ -f "out/target/product/munch/$OLD_BUILD_DATE-signed-target-files.zip" ]] || err "Old Signed Target-Files Not Found"
+#ota_from_target_files -k keys/releasekey -i out/target/product/munch/$OLD_BUILD_DATE-signed-target-files.zip out/target/product/munch/$BUILD_DATE-signed-target-files.zip "out/target/product/munch/$ZIPNAME-Delta.zip"
 
-# Device Tree
-git clone --depth=1 https://github.com/Yukimitsu-Tokito/android_device_xiaomi_munch.git -b voltage-14 device/xiaomi/munch
-# Device-Common Tree
-git clone --depth=1 https://github.com/Yukimitsu-Tokito/android_device_xiaomi_sm8250-common.git -b voltage-14 device/xiaomi/sm8250-common
-
-# Vendor Tree
-git clone --depth=1 https://gitlab.com/Yukimitsu-Tokito/android_vendor_xiaomi_munch.git -b voltage-14 vendor/xiaomi/munch
-# Vendor-Common Tree
-git clone --depth=1 https://gitlab.com/Yukimitsu-Tokito/android_vendor_xiaomi_sm8250-common.git -b voltage-14 vendor/xiaomi/sm8250-common
-
-# Nexus Kernel
-git clone --depth=1 https://github.com/Yukimitsu-Tokito/nexus_kernel_xiaomi_sm8250 -b sched-4 kernel/xiaomi/sm8250
-echo "CONFIG_KSU=y" >> kernel/xiaomi/sm8250/arch/arm64/configs/munch_defconfig
-
-brunch voltage_munch-user -j$(nproc --all)
-
-#export BUILD_TIME=$(date -u +%Y%m%d-%H%M)
-#. build/envsetup.sh && lunch voltage_munch-user  && make -j$(nproc --all) target-files-package otatools img_from_target_files
-#mount -o remount,size=20G /tmp #increase /tmp space to 20G #to avoid no space in /tmp error
-#sign_target_files_apks -o -d keys out/target/product/munch/obj/PACKAGING/target_files_intermediates/*-target_files-*.zip out/target/product/munch/signed-target-files.zip
-#ota_from_target_files -k keys/releasekey out/target/product/munch/signed-target-files.zip "out/target/product/munch/voltage-3.2-munch-$BUILD_TIME-UNOFFICIAL.zip"
+#ota_from_target_files -k build/target/product/security/testkey out/target/product/munch/obj/PACKAGING/target_files_intermediates/*-target_files.zip out/target/product/munch/unsigned-test-ota-package.zip
 #img_from_target_files out/target/product/munch/signed-target-files.zip "out/target/product/munch/voltage-3.2-munch-$BUILD_TIME-UNOFFICIAL-Fastboot.zip"
-
+#. build/envsetup.sh && brunch voltage_munch-ap1a-eng -j$(nproc --all)
 #prebuilts/jdk/jdk17/linux-x86/bin/java -Xmx2048m -Djava.library.path="out/host/linux-x86/lib64" -jar out/host/linux-x86/framework/signapk.jar  keys/releasekey.x509.pem keys/releasekey.pk8 out/input.apk out/signed.apk
