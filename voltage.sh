@@ -47,27 +47,8 @@ ccache -M 20G
 
 sudo mount -o remount,size=32G /tmp #increase /tmp space to 32G #to avoid no space in /tmp error
 
-. build/envsetup.sh && lunch voltage_munch-ap1a-user && make -j$(nproc --all) target-files-package otatools
+. build/envsetup.sh && lunch voltage_munch-ap2a-user && make -j$(nproc --all) target-files-package otatools
 
-local BUILD_PROP="$ANDROID_BUILD_TOP/out/target/product/munch/obj/PACKAGING/target_files_intermediates/voltage_munch-target_files/SYSTEM/build.prop"
-local BUILD_VERSION=$(grep org.voltage.version $BUILD_PROP | cut -d "=" -f 2)
-local DEVICE=$(grep ro.voltage.device $BUILD_PROP | cut -d "=" -f 2 | head -n 1)
-local BUILD_DATE=$(grep ro.build.date.utc $BUILD_PROP | cut -d "=" -f 2 | xargs -I {} date -d @{} -u +"%Y%m%d-%H%M")
-local BUILD_STATUS=$(grep ro.voltage.build.status $BUILD_PROP | cut -d "=" -f 2)
-local BUILD_TYPE=$(grep ro.build.type $BUILD_PROP | cut -d "=" -f 2)
-ZIPNAME="voltage-$BUILD_VERSION-$DEVICE-$BUILD_DATE-$BUILD_STATUS"
+check_target_files_vintf -v out/target/product/munch/obj/PACKAGING/target_files_intermediates/*-target_files.zip 2>&1 | tee out/target/product/munch/vintf.log
 
-sign_target_files_apks -o -d keys --extra_apks PifPrebuilt.apk=keys/platform \
-out/target/product/munch/obj/PACKAGING/target_files_intermediates/*-target_files.zip out/target/product/munch/$BUILD_DATE-signed-target-files.zip
-check_target_files_vintf -v out/target/product/munch/$BUILD_DATE-signed-target-files.zip 2>&1 | tee out/target/product/munch/vintf.log
-ota_from_target_files -k keys/releasekey out/target/product/munch/signed-target-files.zip "out/target/product/munch/$ZIPNAME.zip"
-
-# Delta
-#[[ -z "$OLD_BUILD_DATE" ]] && err "Old Build Date Not Found For Delta Build"
-#[[ -f "out/target/product/munch/$OLD_BUILD_DATE-signed-target-files.zip" ]] || err "Old Signed Target-Files Not Found"
-#ota_from_target_files -k keys/releasekey -i out/target/product/munch/$OLD_BUILD_DATE-signed-target-files.zip out/target/product/munch/$BUILD_DATE-signed-target-files.zip "out/target/product/munch/$ZIPNAME-Delta.zip"
-
-#ota_from_target_files -k build/target/product/security/testkey out/target/product/munch/obj/PACKAGING/target_files_intermediates/*-target_files.zip out/target/product/munch/unsigned-test-ota-package.zip
-#img_from_target_files out/target/product/munch/signed-target-files.zip "out/target/product/munch/voltage-3.2-munch-$BUILD_TIME-UNOFFICIAL-Fastboot.zip"
-#. build/envsetup.sh && brunch voltage_munch-ap1a-eng -j$(nproc --all)
 #prebuilts/jdk/jdk17/linux-x86/bin/java -Xmx2048m -Djava.library.path="out/host/linux-x86/lib64" -jar out/host/linux-x86/framework/signapk.jar  keys/releasekey.x509.pem keys/releasekey.pk8 out/input.apk out/signed.apk
