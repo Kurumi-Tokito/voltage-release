@@ -33,10 +33,10 @@ if [ ! -f "$(realpath ~/.gitconfig)" ]; then
 fi
 
 # Repo Clone
-mkdir voltageos && cd voltageos
+mkdir voltageos && cd voltageos && git-lfs install
 yes | repo init -u https://github.com/VoltageOS/manifest.git -b 14 --git-lfs
 git clone https://github.com/Ivy-Tokito/munch_manifest -b voltage-14 .repo/local_manifests
-git clone https://$GITPASS@github.com/Ivy-Tokito/Private_keys.git keys
+git clone https://$GITPASS@github.com/Ivy-Tokito/Private_keys.git -b voltage-14 private-keys
 repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
 
 # Build
@@ -47,8 +47,9 @@ ccache -M 20G
 
 sudo mount -o remount,size=32G /tmp #increase /tmp space to 32G #to avoid no space in /tmp error
 
-. build/envsetup.sh && lunch voltage_munch-ap2a-user && make -j$(nproc --all) target-files-package otatools
+# Signing Configs
+echo "include private-keys/keys.mk" >>  vendor/voltage/config/packages.mk
 
-check_target_files_vintf -v out/target/product/munch/obj/PACKAGING/target_files_intermediates/*-target_files.zip 2>&1 | tee out/target/product/munch/vintf.log
+. build/envsetup.sh && brunch voltage_munch-ap3a-user
 
 #prebuilts/jdk/jdk17/linux-x86/bin/java -Xmx2048m -Djava.library.path="out/host/linux-x86/lib64" -jar out/host/linux-x86/framework/signapk.jar  keys/releasekey.x509.pem keys/releasekey.pk8 out/input.apk out/signed.apk
