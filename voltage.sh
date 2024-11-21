@@ -7,7 +7,7 @@ CC_DIR="$(pwd -P)/../.ccache" # CCache Path
 
 if [ $(command -v apt) ]; then
     sudo apt-get update && sudo apt-get upgrade -y
-    sudo apt-get install git-core git-lfs jq rsync python3 gnupg ccache flex bison build-essential zip curl zlib1g-dev libssl-dev libc6-dev-i386 libncurses5 x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig -y
+    sudo apt-get install git-core git-lfs jq rsync python3 gnupg ccache aarch64-linux-gnu-gcc flex bison build-essential zip curl zlib1g-dev libssl-dev libc6-dev-i386 libncurses5 x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig -y
     sudo ln -s /usr/bin/python3 /usr/bin/python
 elif [ $(command -v pacman) ]; then
     sudo pacman -Sy --needed --noconfirm -< arch-pkg
@@ -28,15 +28,15 @@ fi
 
 # Git Config
 if [ ! -f "$(realpath ~/.gitconfig)" ]; then
-    git config --global user.email "93600306+Ivy-Tokito@users.noreply.github.com"
+    git config --global user.email "@users.noreply.github.com"
     git config --global user.name "Ivy-Tokito"
 fi
 
 # Repo Clone
 mkdir voltageos && cd voltageos && git-lfs install
-yes | repo init -u https://github.com/VoltageOS/manifest.git -b 14 --git-lfs
-git clone https://github.com/Ivy-Tokito/munch_manifest -b voltage-14 .repo/local_manifests
-git clone https://$GITPASS@github.com/Ivy-Tokito/Private_keys.git -b voltage-14 private-keys
+yes | repo init -u https://github.com/VoltageOS/manifest.git -b 15 --git-lfs
+git clone https://github.com/Kurumi-Tokito/munch_manifest -b voltage-15 .repo/local_manifests
+git clone https://$GITPASS@github.com/Kurumi-Tokito/Private_keys.git -b voltage-15 private-keys
 repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
 
 # Build
@@ -46,9 +46,6 @@ export USE_CCACHE=1 CCACHE_EXEC=$(which ccache)
 ccache -M 20G
 
 sudo mount -o remount,size=32G /tmp #increase /tmp space to 32G #to avoid no space in /tmp error
-
-# Signing Configs
-echo "include private-keys/keys.mk" >>  vendor/voltage/config/packages.mk
 
 . build/envsetup.sh && brunch voltage_munch-ap3a-user
 

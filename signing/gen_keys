@@ -38,7 +38,6 @@ for apex in $(cat apex/apex.list); do
     subject="/C=US/ST=California/L=Mountain View/O=Android/OU=Android/CN=${apex}/emailAddress=android@android.com"
 
     ./make_key ./apex/$apex "$subject";
-    openssl pkcs8 -in ./apex/$apex.pk8 -inform DER -nocrypt -out ./apex/$apex.pem;
 done
 
 # Generate Makefiles

@@ -8,7 +8,6 @@ com.android.configinfrastructure
 com.android.conscrypt
 com.android.devicelock
 com.android.extservices
-com.android.hardware.cas
 com.android.healthfitness
 com.android.i18n
 com.android.ipsec
@@ -16,9 +15,11 @@ com.android.media
 com.android.mediaprovider
 com.android.media.swcodec
 com.android.neuralnetworks
+com.android.nfcservices
 com.android.ondevicepersonalization
 com.android.os.statsd
 com.android.permission
+com.android.profiling
 com.android.resolv
 com.android.rkpd
 com.android.runtime
